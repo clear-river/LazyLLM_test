@@ -524,7 +524,7 @@ add_example('ModelDownloader', '''\
 add_chinese_doc('prompter.PrompterBase', '''\
 Prompter的基类，自定义的Prompter需要继承此基类，并通过基类提供的 ``_init_prompt`` 函数来设置Prompt模板和Instruction的模板，以及截取结果所使用的字符串。可以查看 :doc:`/best_practice/prompt` 进一步了解Prompt的设计思想和使用方式。
 
-Prompt模板和Instruction模板都用 ``{}`` 表示要填充的字段，其中Prompt可包含的字段有 ``system``, ``history``, ``tools``等，而instruction_template可包含的字段为 ``instruction`` 和 ``extro_keys`` 。
+Prompt模板和Instruction模板都用 ``{}`` 表示要填充的字段，其中Prompt可包含的字段有 ``system``, ``history``, ``tools`` 等，而instruction_template可包含的字段为 ``instruction`` 和 ``extro_keys`` 。
 ``instruction`` 由应用的开发者传入， ``instruction`` 中也可以带有 ``{}`` 用于让定义可填充的字段，方便用户填入额外的信息。
 ''')
 

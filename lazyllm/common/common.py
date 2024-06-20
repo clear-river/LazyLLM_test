@@ -1,6 +1,7 @@
 import re
 import builtins
 import typing
+import inspect
 from typing import Any, Callable
 from contextlib import contextmanager
 import copy
@@ -9,6 +10,7 @@ import types
 from queue import Queue
 from pydantic import BaseModel as struct
 from typing import Tuple
+import base64
 
 import lazyllm
 
@@ -416,6 +418,32 @@ class ReqResHelper(object):
             return LazyLlmResponse(messages=res, trace=self.trace) if self.trace or force else res
 
 
+def is_function(f):
+    return isinstance(f, (types.BuiltinFunctionType, types.FunctionType,
+                          types.BuiltinMethodType, types.MethodType, types.LambdaType))
+
+def prep_repr(category, type, *, name=None, **kwargs):
+    result = {'category': category, 'type': type}
+    if name:
+        result['name'] = name
+    return result.update(kwargs)
+
+class FuncWrapper(object):
+    def __init__(self, f):
+        self.f = f.f if isinstance(f, FuncWrapper) else f
+
+    def __call__(self, *args, **kw): return self.f(*args, **kw)
+    
+    def prep_repr(self):
+        return prep_repr('Function',self.f.__name__.strip('<>'), 
+                                 code=base64.b64encode(inspect.getsource(self.f).encode('utf-8')).decode('utf-8'))
+
+    def __repr__(self):
+        # TODO: specify lambda/staticmethod/classmethod/instancemethod
+        # TODO: add registry message
+        return lazyllm.make_repr('Function', self.f.__name__.strip('<>'))
+
+
 class ReprRule(object):
     rules = {}
 
@@ -444,15 +472,15 @@ def make_repr(category, type, *, name=None, subs=[], attrs=dict(), **kw):
     attrs = ' ' + ' '.join([f'{k}={v}' for k, v in attrs.items()]) if attrs else ''
     repr = f'<{category} type={type}{name}{attrs}>'
 
-    if len(subs) == 1 and ReprRule.check_combine(category, type, subs[0]):
-        if lazyllm.config['repr_ml']:
-            sub_cate = re.split('>| ', subs[0][1:])[0]
-            subs = rreplace(subs[0], f'</{sub_cate}>', f'</{category}>', 1)
-        else:
-            subs = subs[0]
-        return repr[:-1] + f' sub-category={subs[1:]}'
+    # if len(subs) == 1 and ReprRule.check_combine(category, type, subs[0]):
+    #     if lazyllm.config['repr_ml']:
+    #         sub_cate = re.split('>| ', subs[0][1:])[0]
+    #         subs = rreplace(subs[0], f'</{sub_cate}>', f'</{category}>', 1)
+    #     else:
+    #         subs = subs[0]
+    #     return repr[:-1] + f' sub-category={subs[1:]}'
 
-    # ident
+    # indent
     sub_repr = []
     for idx, value in enumerate(subs):
         for i, v in enumerate(value.strip().split('\n')):

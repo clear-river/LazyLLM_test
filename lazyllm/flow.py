@@ -2,7 +2,7 @@ import lazyllm
 from lazyllm import LazyLLMRegisterMetaClass, package, kwargs, bind, root
 from lazyllm import Thread, ReadOnlyWrapper, LOG
 from lazyllm import LazyLlmRequest, LazyLlmResponse, ReqResHelper
-from .common.common import _MetaBind
+from .common.common import _MetaBind, is_function, FuncWrapper
 import types
 import inspect
 import threading
@@ -96,25 +96,9 @@ setattr(bind, '__enter__', _bind_enter)
 setattr(bind, '__exit__', _bind_exit)
 
 
-def _is_function(f):
-    return isinstance(f, (types.BuiltinFunctionType, types.FunctionType,
-                          types.BuiltinMethodType, types.MethodType, types.LambdaType))
-
-
 # TODO(wangzhihong): support workflow launcher.
 # Disable item launchers if launcher is already set in workflow.
 class LazyLLMFlowsBase(FlowBase, metaclass=LazyLLMRegisterMetaClass):
-    class FuncWrap(object):
-        def __init__(self, f):
-            self.f = f.f if isinstance(f, LazyLLMFlowsBase.FuncWrap) else f
-
-        def __call__(self, *args, **kw): return self.f(*args, **kw)
-
-        def __repr__(self):
-            # TODO: specify lambda/staticmethod/classmethod/instancemethod
-            # TODO: add registry message
-            return lazyllm.make_repr('Function', self.f.__name__.strip('<>'))
-
     def __init__(self, *args, post_action=None, return_input=False, auto_capture=False, **kw):
         assert len(args) == 0 or len(kw) == 0, f'Cannot provide args `{args}` and kwargs `{kw}` at the same time'
         if len(args) > 0 and isinstance(args[0], (tuple, list)):
@@ -151,7 +135,7 @@ class LazyLLMFlowsBase(FlowBase, metaclass=LazyLLMRegisterMetaClass):
         return self
 
     def __repr__(self):
-        subs = [repr(LazyLLMFlowsBase.FuncWrap(it) if _is_function(it) else it) for it in self._items]
+        subs = [repr(FuncWrapper(it) if is_function(it) else it) for it in self._items]
         if self.post_action is not None:
             subs.append(lazyllm.make_repr('Flow', 'PostAction', subs=[self.post_action.__repr__()]))
         return lazyllm.make_repr('Flow', self.__class__.__name__, subs=subs, items=self._item_names)

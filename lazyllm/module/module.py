@@ -11,6 +11,7 @@ import lazyllm
 from lazyllm import FlatList, LazyLlmResponse, LazyLlmRequest, Option, launchers, LOG
 from ..components.prompter import PrompterBase, ChatPrompter, EmptyPrompter
 from ..components.utils import ModelDownloader
+from ..common import is_function, FuncWrapper
 from ..flow import FlowBase, Pipeline, Parallel
 import uuid
 from ..client import get_redis, redis_client
@@ -371,7 +372,9 @@ class ServerModule(UrlModule):
 
     def __repr__(self):
         return lazyllm.make_repr('Module', 'Server', subs=[repr(self.m)], name=self._module_name,
-                                 stream=self._stream, return_trace=self._return_trace)
+                                 stream=self._stream, return_trace=self._return_trace,
+                                 pre=repr(FuncWrapper(self._pre_func) if is_function(self._pre_func) else self._pre_func),
+                                 post=repr(FuncWrapper(self._post_func) if is_function(self._post_func) else self._post_func))
 
 class TrainableModule(UrlModule):
     builder_keys = ['trainset', 'train_method', 'finetune_method', 'deploy_method', 'mode']
